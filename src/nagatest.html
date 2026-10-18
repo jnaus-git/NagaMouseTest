@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naga Button Test</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --page: #111615;
+            --surface: #1b2421;
+            --surface-raised: #25312c;
+            --text: #f1f5ef;
+            --muted: #a6b2aa;
+            --accent: #b9f36a;
+            --focus: #6de0c0;
+            --border: #435149;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 38px 18px;
+            color: var(--text);
+            background: radial-gradient(ellipse at 15% 0%, #26392f 0, var(--page) 54%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        main { width: min(100%, 760px); margin: 0 auto; }
+        h1 { margin: 0 0 8px; color: var(--accent); font-size: 30px; }
+        .subtitle { margin: 0 0 28px; color: var(--muted); font-size: 15px; }
+
+        .selector-group {
+            display: inline-flex;
+            gap: 4px;
+            margin-bottom: 18px;
+            padding: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .panel-btn {
+            padding: 9px 15px;
+            color: var(--muted);
+            background: transparent;
+            border: 0;
+            border-radius: 5px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .panel-btn:hover { color: var(--text); }
+        .panel-btn.active { color: #172014; background: var(--accent); }
+
+        .section {
+            margin-top: 14px;
+            padding: 20px;
+            background: color-mix(in srgb, var(--surface) 90%, transparent);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .section h2 { margin: 0 0 8px; font-size: 17px; }
+        .section p { margin: 0 0 14px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+
+        #key-test-input, .mapping-input {
+            width: 100%;
+            padding: 12px 13px;
+            color: var(--text);
+            background: #101613;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font: inherit;
+            user-select: text;
+        }
+
+        #key-test-input { min-height: 48px; }
+        #key-test-input:focus, .mapping-input:focus { outline: 2px solid var(--focus); }
+        #key-test-status { min-height: 21px; margin: 10px 0 0; color: var(--accent); font-size: 14px; }
+        .lesson-picker { display: flex; gap: 8px; margin: 14px 0; }
+        .lesson-button, .lesson-start {
+            padding: 9px 12px;
+            color: var(--text);
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .lesson-button[aria-pressed="true"] { color: #172014; background: var(--accent); border-color: var(--accent); }
+        .lesson-start { color: #172014; background: var(--focus); border-color: var(--focus); }
+        .lesson-button:disabled, .lesson-start:disabled { opacity: .55; cursor: not-allowed; }
+        .lesson-practice { margin-top: 16px; padding-top: 15px; border-top: 1px solid var(--border); }
+        .lesson-sequence { display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0; }
+        .lesson-key {
+            display: grid;
+            min-width: 42px;
+            max-width: 140px;
+            min-height: 42px;
+            padding: 6px;
+            place-items: center;
+            color: var(--text);
+            background: #101613;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            overflow-wrap: anywhere;
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.2;
+            font-weight: 700;
+        }
+        .lesson-key.done { color: #172014; background: var(--accent); border-color: var(--accent); }
+        .lesson-key.current { outline: 2px solid var(--focus); outline-offset: 2px; }
+        #lesson-status { min-height: 22px; margin: 12px 0 0; color: var(--focus); }
+        main.lesson-mode > :not(#lesson-view) { display: none !important; }
+        #lesson-view[hidden] { display: none; }
+        .lesson-view-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+        .lesson-view-header h1 { margin: 0; }
+        .lesson-view-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+        #lesson-view-content {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 36px;
+            min-height: min(66vh, 560px);
+        }
+        .lesson-prompt { max-width: 560px; }
+        .lesson-prompt > p { color: var(--muted); line-height: 1.5; }
+        #lesson-view-content .naga-grid { margin: 0; }
+        .mouse-btn.lesson-target {
+            color: #142012;
+            background: var(--focus);
+            border: 3px solid #efffcb;
+            box-shadow: 0 0 0 5px color-mix(in srgb, var(--focus) 24%, transparent), 0 0 26px color-mix(in srgb, var(--focus) 65%, transparent);
+            transform: scale(1.06);
+        }
+        .mouse-btn.lesson-target .button-number { color: #35452a; }
+        .mouse-btn.press-correct { animation: correct-border-flash 520ms ease-out; }
+        .mouse-btn.press-wrong { animation: wrong-border-flash 520ms ease-out; }
+        @keyframes correct-border-flash {
+            0%, 38% { outline: 3px solid #65ef83; outline-offset: 2px; box-shadow: 0 0 18px rgba(101, 239, 131, .8); }
+            100% { outline: 3px solid transparent; outline-offset: 0; box-shadow: none; }
+        }
+        @keyframes wrong-border-flash {
+            0%, 38% { outline: 3px solid #ff655f; outline-offset: 2px; box-shadow: 0 0 18px rgba(255, 101, 95, .75); }
+            100% { outline: 3px solid transparent; outline-offset: 0; box-shadow: none; }
+        }
+        .lesson-exit, .lesson-repeat {
+            padding: 9px 12px;
+            color: var(--text);
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font: inherit;
+            cursor: pointer;
+        }
+        .lesson-repeat { color: #172014; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+        .lesson-exit:hover, .lesson-repeat:hover { border-color: var(--focus); }
+
+        .naga-grid {
+            display: grid;
+            gap: 9px;
+            justify-content: center;
+            margin: 20px auto 4px;
+        }
+
+        .grid-12, .grid-6 { grid-template-columns: repeat(3, minmax(76px, 1fr)); max-width: 246px; }
+        .grid-2 { grid-template-columns: repeat(2, minmax(100px, 1fr)); max-width: 230px; }
+
+        .mouse-btn {
+            display: flex;
+            min-width: 0;
+            aspect-ratio: 1;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 0;
+            color: var(--text);
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 100ms ease, border-color 100ms ease;
+        }
+
+        .button-number { color: var(--muted); font-size: 12px; font-weight: 400; }
+        .button-mapping {
+            max-width: 100%;
+            overflow: hidden;
+            padding: 0 3px;
+            font-size: 14px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .mouse-btn.active { color: #172014; background: var(--accent); border-color: #e5ffc2; }
+        .mouse-btn.active .button-number { color: #35452a; }
+        .mouse-btn.assigning { outline: 3px solid var(--focus); outline-offset: 2px; cursor: crosshair; }
+        .settings-panel summary { cursor: pointer; font-weight: 700; }
+        .settings-panel[open] summary { margin-bottom: 12px; }
+        .edit-mappings-btn {
+            margin: 0 0 12px;
+            padding: 8px 12px;
+            color: #172014;
+            background: var(--accent);
+            border: 0;
+            border-radius: 5px;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .edit-mappings-btn:hover { background: #d2f99c; }
+        #mapping-status { min-height: 20px; margin: 0 0 12px; color: var(--focus); font-size: 14px; }
+        #mapping-editor { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+        .mapping-row label { display: block; margin-bottom: 5px; color: var(--muted); font-size: 13px; }
+        .mapping-input { padding: 9px; }
+
+        @media (max-width: 520px) {
+            body { padding: 24px 14px; }
+            .section { padding: 16px; }
+            #mapping-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            #lesson-view-content { grid-template-columns: 1fr; gap: 20px; min-height: auto; }
+            #lesson-view-content .naga-grid { grid-row: 1; }
+            .lesson-prompt { grid-row: 2; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Naga Button Test</h1>
+        <p class="subtitle">Choose your side plate, then press its buttons to see their keyboard output.</p>
+
+        <div class="selector-group" role="group" aria-label="Choose Naga side plate">
+            <button class="panel-btn active" type="button" data-layout="12" aria-pressed="true">12-button</button>
+            <button class="panel-btn" type="button" data-layout="6" aria-pressed="false">6-button</button>
+            <button class="panel-btn" type="button" data-layout="2" aria-pressed="false">2-button</button>
+        </div>
+
+        <section class="section" aria-labelledby="test-heading">
+            <h2 id="test-heading">Free test</h2>
+            <p>Click the field to focus it, then press a side button. Detected keys appear here and matching buttons light up.</p>
+            <input id="key-test-input" type="text" autocomplete="off" spellcheck="false" placeholder="Click here, then press a mouse button" aria-label="Keyboard output test">
+            <p id="key-test-status" aria-live="polite">Click the field to start testing.</p>
+        </section>
+
+        <section class="section" aria-labelledby="tutorial-heading">
+            <h2 id="tutorial-heading">Typing lessons</h2>
+            <p>Practice guided sequences with your configured home-row keys on the 6-button plate.</p>
+            <div class="lesson-picker" role="group" aria-label="Choose a lesson">
+                <button class="lesson-button" type="button" data-lesson="1" aria-pressed="true">Lesson 1</button>
+                <button class="lesson-button" type="button" data-lesson="2" aria-pressed="false">Lesson 2</button>
+                <button class="lesson-button" type="button" data-lesson="3" aria-pressed="false">Lesson 3</button>
+            </div>
+            <p id="lesson-description"></p>
+            <button class="lesson-start" id="lesson-start" type="button">Start Lesson 1</button>
+        </section>
+
+        <div id="naga-grid-element" class="naga-grid grid-12" aria-label="Mouse button layout"></div>
+
+        <details class="section settings-panel" id="settings-panel">
+            <summary>Settings: Synapse mappings</summary>
+            <p>In edit mode, click a mapping field or grid button, then press the Naga button. Its Synapse key will be assigned there.</p>
+            <button class="edit-mappings-btn" id="edit-mappings-btn" type="button" aria-pressed="false">Edit mappings</button>
+            <p id="mapping-status" aria-live="polite">Mappings save in this browser, separately for each plate.</p>
+            <div id="mapping-editor"></div>
+        </details>
+
+        <section id="lesson-view" hidden aria-labelledby="lesson-view-title">
+            <div class="lesson-view-header">
+                <h1 id="lesson-view-title">Typing lesson</h1>
+                <div class="lesson-view-actions">
+                    <button class="lesson-repeat" id="lesson-repeat" type="button">Repeat lesson</button>
+                    <button class="lesson-exit" id="lesson-next" type="button">Next lesson</button>
+                    <button class="lesson-exit" id="lesson-exit" type="button">Exit lesson</button>
+                </div>
+            </div>
+            <div id="lesson-view-content">
+                <div class="lesson-prompt">
+                    <h2 id="lesson-view-description"></h2>
+                    <p id="lesson-view-progress"></p>
+                    <div class="lesson-sequence" id="lesson-view-sequence" aria-label="Sequence to press"></div>
+                    <p id="lesson-view-status" aria-live="polite">Press the highlighted key using the Naga button.</p>
+                </div>
+                <div id="lesson-grid-holder" aria-label="6-button Naga grid"></div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const layouts = {
+            '12': { gridClass: 'grid-12', buttons: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] },
+            '6': { gridClass: 'grid-6', buttons: ['1', '2', '3', '4', '5', '6'], gridOrder: ['1', '2', '3', '6', '5', '4'] },
+            '2': { gridClass: 'grid-2', buttons: ['Front', 'Back'] }
+        };
+        const lessons = {
+            '1': {
+                title: 'Lesson 1',
+                description: 'Practice each home-row key individually, then repeat it up to four times.',
+                drills: [['5'], ['2'], ['2'], ['5'], ['5', '5'], ['2', '2'], ['5', '5', '5'], ['2', '2', '2'], ['5', '5', '5', '5'], ['2', '2', '2', '2']]
+            },
+            '2': {
+                title: 'Lesson 2',
+                description: 'Mix your two home-row keybinds into short combinations of up to four presses.',
+                drills: [['5', '2'], ['2', '5'], ['5', '2', '2'], ['2', '5', '5'], ['5', '5', '2'], ['2', '2', '5'], ['5', '2', '5'], ['2', '5', '2'], ['5', '5', '2', '2'], ['2', '2', '5', '5'], ['5', '2', '5', '2'], ['2', '5', '2', '5']]
+            },
+            '3': {
+                title: 'Lesson 3: Home row game',
+                description: 'Press as many random five-key home-row sequences correctly as you can in 30 seconds.',
+                game: true
+            }
+        };
+        const storageKey = 'naga-mouse-test-settings';
+        const homeRowRecordKey = 'naga-mouse-home-row-record';
+        let currentLayout = '12';
+        let selectedLesson = '1';
+        let activeLesson = null;
+        let currentDrill = 0;
+        let currentStep = 0;
+        let layoutBeforeLesson = null;
+        let activeGame = false;
+        let gameScore = 0;
+        let gameAttempts = 0;
+        let gameCorrectPresses = 0;
+        let gameSequence = [];
+        let gameStep = 0;
+        let gameDeadline = 0;
+        let gameTimer = null;
+        let gameHasStarted = false;
+        const buttonFlashTimers = new WeakMap();
+        const settings = loadSettings();
+
+        const gridElement = document.getElementById('naga-grid-element');
+        const mappingEditor = document.getElementById('mapping-editor');
+        const testInput = document.getElementById('key-test-input');
+        const testStatus = document.getElementById('key-test-status');
+        const settingsPanel = document.getElementById('settings-panel');
+        const mappingStatus = document.getElementById('mapping-status');
+        const editMappingsButton = document.getElementById('edit-mappings-btn');
+        const lessonStartButton = document.getElementById('lesson-start');
+        const lessonDescription = document.getElementById('lesson-description');
+        const lessonView = document.getElementById('lesson-view');
+        const lessonViewTitle = document.getElementById('lesson-view-title');
+        const lessonViewDescription = document.getElementById('lesson-view-description');
+        const lessonViewProgress = document.getElementById('lesson-view-progress');
+        const lessonViewSequence = document.getElementById('lesson-view-sequence');
+        const lessonViewStatus = document.getElementById('lesson-view-status');
+        const lessonGridHolder = document.getElementById('lesson-grid-holder');
+        let pendingAssignment = null;
+        let isEditingMappings = false;
+
+        function createDefaults() {
+            return Object.fromEntries(Object.entries(layouts).map(([layout, data]) => [
+                layout,
+                Object.fromEntries(data.buttons.map((button, index) => [button, layout === '2' ? '' : String(index + 1)]))
+            ]));
+        }
+
+        function loadSettings() {
+            const defaults = createDefaults();
+            try {
+                const stored = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                for (const [layout, data] of Object.entries(layouts)) {
+                    for (const button of data.buttons) {
+                        const value = stored[layout]?.[button];
+                        if (typeof value === 'string') defaults[layout][button] = value;
+                    }
+                }
+            } catch {
+                testStatus.textContent = 'Saved settings could not be read; using defaults.';
+            }
+            return defaults;
+        }
+
+        function saveSettings() {
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(settings));
+                mappingStatus.textContent = 'Mapping saved in this browser.';
+                if (activeLesson) renderLessonDrill();
+            } catch {
+                mappingStatus.textContent = 'Browser storage is unavailable; mapping was not saved.';
+            }
+        }
+
+        function getLessonKeybind(button) {
+            return settings['6'][button]?.trim() || 'Not set';
+        }
+
+        function clearAssignmentHighlight() {
+            gridElement.querySelectorAll('.mouse-btn').forEach(tile => {
+                tile.classList.remove('assigning');
+                tile.querySelector('.button-mapping').textContent = settings[currentLayout][tile.dataset.button] || 'Not set';
+            });
+        }
+
+        function renderGrid() {
+            const layout = layouts[currentLayout];
+            gridElement.replaceChildren();
+            gridElement.className = `naga-grid ${layout.gridClass}`;
+            const gridOrder = layout.gridOrder || layout.buttons;
+            gridOrder.forEach(button => {
+                const index = layout.buttons.indexOf(button);
+                const tile = document.createElement('button');
+                tile.type = 'button';
+                tile.className = 'mouse-btn';
+                tile.dataset.button = button;
+                tile.disabled = !isEditingMappings;
+                const number = document.createElement('span');
+                number.className = 'button-number';
+                number.textContent = currentLayout === '2' ? `BUTTON ${index + 4}` : `BUTTON ${index + 1}`;
+                const mapping = document.createElement('span');
+                mapping.className = 'button-mapping';
+                mapping.textContent = settings[currentLayout][button] || 'Not set';
+                tile.append(number, mapping);
+                tile.setAttribute('aria-label', `Button ${currentLayout === '2' ? index + 4 : index + 1}, mapped to ${settings[currentLayout][button] || 'not set'}${isEditingMappings ? '. Click to assign a key.' : ''}`);
+                tile.addEventListener('click', () => {
+                    if (!settingsPanel.open || !isEditingMappings) return;
+                    clearAssignmentHighlight();
+                    pendingAssignment = { layout: currentLayout, button };
+                    tile.classList.add('assigning');
+                    const buttonName = currentLayout === '2' ? `Button ${index + 4} (${button})` : `Button ${index + 1}`;
+                    mappingStatus.textContent = `Press the Synapse key for ${buttonName}. Press Escape to cancel.`;
+                });
+                gridElement.appendChild(tile);
+            });
+            renderMappingEditor();
+        }
+
+        function renderMappingEditor() {
+            mappingEditor.replaceChildren();
+            const layout = layouts[currentLayout];
+            (layout.gridOrder || layout.buttons).forEach(button => {
+                const index = layout.buttons.indexOf(button);
+                const row = document.createElement('div');
+                row.className = 'mapping-row';
+                const label = document.createElement('label');
+                const input = document.createElement('input');
+                const buttonName = currentLayout === '2' ? `Button ${index + 4} (${button})` : `Button ${index + 1}`;
+                label.textContent = buttonName;
+                input.className = 'mapping-input';
+                input.type = 'text';
+                input.maxLength = 40;
+                input.value = settings[currentLayout][button];
+                input.placeholder = 'e.g. 1, F1, or Q';
+                input.setAttribute('aria-label', `Synapse key for ${buttonName}`);
+                input.addEventListener('click', () => {
+                    if (!isEditingMappings) return;
+                    clearAssignmentHighlight();
+                    pendingAssignment = { layout: currentLayout, button };
+                    input.value = '';
+                    settings[currentLayout][button] = '';
+                    const tile = gridElement.querySelector(`[data-button="${button}"]`);
+                    tile.classList.add('assigning');
+                    tile.querySelector('.button-mapping').textContent = 'Press button';
+                    saveSettings();
+                    mappingStatus.textContent = `Press the Naga button assigned to ${buttonName}. Press Escape to cancel.`;
+                });
+                input.addEventListener('input', () => {
+                    settings[currentLayout][button] = input.value.trim();
+                    saveSettings();
+                    const tile = gridElement.querySelector(`[data-button="${button}"] .button-mapping`);
+                    if (tile) tile.textContent = settings[currentLayout][button] || 'Not set';
+                    const tileButton = gridElement.querySelector(`[data-button="${button}"]`);
+                    if (tileButton) tileButton.setAttribute('aria-label', `${buttonName}, mapped to ${settings[currentLayout][button] || 'not set'}${isEditingMappings ? '. Click to assign a key.' : ''}`);
+                });
+                label.appendChild(input);
+                row.appendChild(label);
+                mappingEditor.appendChild(row);
+            });
+        }
+
+        function renderLessonDrill() {
+            const sequence = activeLesson.drills[currentDrill];
+            lessonViewProgress.textContent = `Drill ${currentDrill + 1} of ${activeLesson.drills.length}`;
+            lessonViewSequence.replaceChildren();
+            sequence.forEach((button, index) => {
+                const key = document.createElement('span');
+                key.className = 'lesson-key';
+                if (index < currentStep) key.classList.add('done');
+                if (index === currentStep) key.classList.add('current');
+                key.textContent = getLessonKeybind(button);
+                key.title = `Naga button ${button}`;
+                lessonViewSequence.appendChild(key);
+            });
+            gridElement.querySelectorAll('.mouse-btn').forEach(tile => {
+                tile.classList.toggle('lesson-target', tile.dataset.button === sequence[currentStep]);
+            });
+        }
+
+        function getHomeRowRecord() {
+            try {
+                return Number(localStorage.getItem(homeRowRecordKey)) || 0;
+            } catch {
+                return 0;
+            }
+        }
+
+        function renderHomeRowGame() {
+            const timeDisplay = gameHasStarted ? `${Math.ceil(Math.max(0, gameDeadline - Date.now()) / 1000)}s` : 'Ready';
+            lessonViewProgress.textContent = `Time: ${timeDisplay} | Correct presses: ${gameScore} | Personal record: ${getHomeRowRecord()}`;
+            lessonViewSequence.replaceChildren();
+            gameSequence.forEach((button, index) => {
+                const target = document.createElement('span');
+                target.className = 'lesson-key';
+                if (index < gameStep) target.classList.add('done');
+                target.textContent = getLessonKeybind(button);
+                target.title = `Naga button ${button}`;
+                lessonViewSequence.appendChild(target);
+            });
+            gridElement.querySelectorAll('.mouse-btn').forEach(tile => {
+                tile.classList.toggle('lesson-target', tile.dataset.button === gameSequence[gameStep]);
+            });
+        }
+
+        function createHomeRowSequence() {
+            return Array.from({ length: 5 }, chooseHomeRowTarget);
+        }
+
+        function flashLessonButton(button, isCorrect) {
+            if (!button) return;
+            const tile = gridElement.querySelector(`[data-button="${button}"]`);
+            if (!tile) return;
+            const previousTimer = buttonFlashTimers.get(tile);
+            if (previousTimer) window.clearTimeout(previousTimer);
+            tile.classList.remove('press-correct', 'press-wrong');
+            void tile.offsetWidth;
+            const flashClass = isCorrect ? 'press-correct' : 'press-wrong';
+            const clearFlash = () => {
+                window.clearTimeout(buttonFlashTimers.get(tile));
+                tile.classList.remove('press-correct', 'press-wrong');
+                buttonFlashTimers.delete(tile);
+            };
+            tile.classList.add(flashClass);
+            tile.addEventListener('animationend', clearFlash, { once: true });
+            buttonFlashTimers.set(tile, window.setTimeout(clearFlash, 700));
+        }
+
+        function finishHomeRowGame() {
+            window.clearInterval(gameTimer);
+            gameTimer = null;
+            activeGame = false;
+            const previousRecord = getHomeRowRecord();
+            const isNewRecord = gameScore > previousRecord;
+            if (isNewRecord) {
+                try {
+                    localStorage.setItem(homeRowRecordKey, String(gameScore));
+                } catch {
+                    lessonViewStatus.textContent = `Time's up. Score: ${gameScore}. Could not save the personal record in this browser.`;
+                    updateLessonPicker();
+                    return;
+                }
+            }
+            lessonViewProgress.textContent = `Time: 0s | Correct presses: ${gameScore} | Personal record: ${getHomeRowRecord()}`;
+            const accuracy = gameAttempts ? Math.round((gameCorrectPresses / gameAttempts) * 100) : 0;
+            const accuracySummary = `Accuracy: ${accuracy}% (${gameCorrectPresses}/${gameAttempts} presses correct).`;
+            lessonViewStatus.textContent = isNewRecord
+                ? `Time's up! You got ${gameScore} correct presses. New personal record! ${accuracySummary}`
+                : `Time's up! You got ${gameScore} correct presses. Personal record: ${getHomeRowRecord()} correct presses. ${accuracySummary}`;
+            gridElement.querySelectorAll('.mouse-btn').forEach(tile => tile.classList.remove('lesson-target'));
+            updateLessonPicker();
+        }
+
+        function startHomeRowGame(isRestart = false) {
+            if (!isRestart) layoutBeforeLesson = currentLayout;
+            window.clearInterval(gameTimer);
+            gameTimer = null;
+            currentLayout = '6';
+            setMappingEditMode(false);
+            settingsPanel.open = false;
+            document.querySelectorAll('.panel-btn').forEach(button => {
+                const selected = button.dataset.layout === '6';
+                button.classList.toggle('active', selected);
+                button.setAttribute('aria-pressed', String(selected));
+            });
+            renderGrid();
+            lessonGridHolder.appendChild(gridElement);
+            lessonView.hidden = false;
+            document.querySelector('main').classList.add('lesson-mode');
+            activeLesson = null;
+            activeGame = true;
+            gameScore = 0;
+            gameAttempts = 0;
+            gameCorrectPresses = 0;
+            gameSequence = createHomeRowSequence();
+            gameStep = 0;
+            gameDeadline = 0;
+            gameHasStarted = false;
+            lessonViewTitle.textContent = lessons['3'].title;
+            lessonViewDescription.textContent = lessons['3'].description;
+            lessonViewStatus.textContent = 'Press the first key to start the 30-second timer.';
+            renderHomeRowGame();
+            updateLessonPicker();
+            window.clearInterval(gameTimer);
+            gameTimer = null;
+        }
+
+        function beginHomeRowTimer() {
+            gameHasStarted = true;
+            gameDeadline = Date.now() + 30000;
+            lessonViewProgress.textContent = `Time: 30s | Correct presses: ${gameScore} | Personal record: ${getHomeRowRecord()}`;
+            gameTimer = window.setInterval(() => {
+                if (Date.now() >= gameDeadline) {
+                    finishHomeRowGame();
+                } else {
+                    const remaining = Math.ceil((gameDeadline - Date.now()) / 1000);
+                    lessonViewProgress.textContent = `Time: ${remaining}s | Correct presses: ${gameScore} | Personal record: ${getHomeRowRecord()}`;
+                }
+            }, 100);
+        }
+
+        function updateLessonPicker() {
+            document.querySelectorAll('.lesson-button').forEach(button => {
+                const selected = button.dataset.lesson === selectedLesson;
+                button.setAttribute('aria-pressed', String(selected));
+                button.disabled = Boolean(activeLesson || activeGame);
+            });
+            lessonDescription.textContent = lessons[selectedLesson].description;
+            lessonStartButton.textContent = `Start ${lessons[selectedLesson].title}`;
+            lessonStartButton.disabled = Boolean(activeLesson || activeGame);
+            document.getElementById('lesson-next').disabled = Number(selectedLesson) >= Object.keys(lessons).length;
+        }
+
+        function chooseHomeRowTarget() {
+            return Math.random() < 0.5 ? '5' : '2';
+        }
+
+        function nextLesson() {
+            const nextId = String(Number(selectedLesson) + 1);
+            if (!lessons[nextId]) return;
+            selectedLesson = nextId;
+            if (activeGame) {
+                window.clearInterval(gameTimer);
+                gameTimer = null;
+                activeGame = false;
+            }
+            updateLessonPicker();
+            if (selectedLesson === '3') {
+                startHomeRowGame(true);
+            } else {
+                startLesson(true);
+            }
+        }
+
+        function startLesson(isRestart = false) {
+            if (selectedLesson === '3') {
+                startHomeRowGame(isRestart);
+                return;
+            }
+            if (!isRestart) layoutBeforeLesson = currentLayout;
+            currentLayout = '6';
+            setMappingEditMode(false);
+            settingsPanel.open = false;
+            document.querySelectorAll('.panel-btn').forEach(button => {
+                const selected = button.dataset.layout === '6';
+                button.classList.toggle('active', selected);
+                button.setAttribute('aria-pressed', String(selected));
+            });
+            renderGrid();
+            testInput.value = '';
+            testInput.focus();
+            activeLesson = lessons[selectedLesson];
+            currentDrill = 0;
+            currentStep = 0;
+            lessonView.hidden = false;
+            document.querySelector('main').classList.add('lesson-mode');
+            lessonViewTitle.textContent = activeLesson.title;
+            lessonViewDescription.textContent = activeLesson.description;
+            lessonViewStatus.textContent = 'Press the highlighted key using the Naga button.';
+            lessonGridHolder.appendChild(gridElement);
+            renderLessonDrill();
+            updateLessonPicker();
+        }
+
+        function exitLesson() {
+            window.clearInterval(gameTimer);
+            gameTimer = null;
+            activeGame = false;
+            activeLesson = null;
+            document.querySelector('main').classList.remove('lesson-mode');
+            lessonView.hidden = true;
+            currentLayout = layoutBeforeLesson || '12';
+            layoutBeforeLesson = null;
+            document.querySelectorAll('.panel-btn').forEach(button => {
+                const selected = button.dataset.layout === currentLayout;
+                button.classList.toggle('active', selected);
+                button.setAttribute('aria-pressed', String(selected));
+            });
+            document.querySelector('main').insertBefore(gridElement, settingsPanel);
+            renderGrid();
+            updateLessonPicker();
+        }
+
+        function repeatLesson() {
+            if (selectedLesson === '3') {
+                startHomeRowGame(true);
+                return;
+            }
+            activeLesson = lessons[selectedLesson];
+            currentDrill = 0;
+            currentStep = 0;
+            lessonView.hidden = false;
+            document.querySelector('main').classList.add('lesson-mode');
+            lessonViewTitle.textContent = activeLesson.title;
+            lessonViewDescription.textContent = activeLesson.description;
+            lessonViewStatus.textContent = 'Press the highlighted key using the Naga button.';
+            renderGrid();
+            lessonGridHolder.appendChild(gridElement);
+            renderLessonDrill();
+            updateLessonPicker();
+        }
+
+        function handleLessonKey(keyName, event) {
+            const detected = layouts['6'].buttons.find(button => {
+                const mapping = settings['6'][button];
+                return mapping && mapping.trim().toLocaleLowerCase() === keyName.toLocaleLowerCase();
+            });
+            gridElement.querySelectorAll('.mouse-btn').forEach(tile => {
+                tile.classList.toggle('active', tile.dataset.button === detected);
+            });
+
+            if (activeGame) {
+                const expected = gameSequence[gameStep];
+                if (!gameHasStarted) beginHomeRowTimer();
+                gameAttempts++;
+                flashLessonButton(detected, detected === expected);
+                if (detected === expected) {
+                    gameCorrectPresses++;
+                    gameScore++;
+                    gameStep++;
+                    if (gameStep === gameSequence.length) {
+                        gameSequence = createHomeRowSequence();
+                        gameStep = 0;
+                        lessonViewStatus.textContent = 'Sequence complete. Try the next one.';
+                    } else {
+                        lessonViewStatus.textContent = 'Good. Keep going through the sequence.';
+                    }
+                    renderHomeRowGame();
+                } else {
+                    const expectedKeybind = getLessonKeybind(expected);
+                    lessonViewStatus.textContent = expectedKeybind === 'Not set'
+                        ? 'This button has no key assigned. Set its Synapse mapping in Settings.'
+                        : `Not quite. Press ${expectedKeybind}; the sequence will stay here until it is correct.`;
+                }
+                event.preventDefault();
+                return;
+            }
+
+            const expected = activeLesson.drills[currentDrill][currentStep];
+            flashLessonButton(detected, detected === expected);
+            if (detected !== expected) {
+                const expectedKeybind = getLessonKeybind(expected);
+                lessonViewStatus.textContent = expectedKeybind === 'Not set'
+                    ? 'This button has no key assigned. Set its Synapse mapping in Settings.'
+                    : `Not quite. Press ${expectedKeybind} for this step.`;
+                event.preventDefault();
+                return;
+            }
+
+            currentStep++;
+            if (currentStep === activeLesson.drills[currentDrill].length) {
+                currentDrill++;
+                currentStep = 0;
+                if (currentDrill === activeLesson.drills.length) {
+                    const finishedTitle = activeLesson.title;
+                    activeLesson = null;
+                    lessonViewProgress.textContent = `${finishedTitle} complete`;
+                    lessonViewSequence.replaceChildren();
+                    lessonViewStatus.textContent = 'Lesson complete. Exit to choose another lesson or repeat this one.';
+                    gridElement.querySelectorAll('.mouse-btn').forEach(tile => tile.classList.remove('lesson-target'));
+                    updateLessonPicker();
+                    event.preventDefault();
+                    return;
+                }
+                lessonViewStatus.textContent = 'Nice work. Next sequence.';
+            } else {
+                lessonViewStatus.textContent = 'Good. Keep going.';
+            }
+            renderLessonDrill();
+            event.preventDefault();
+        }
+
+        function formatKey(event) {
+            const modifiers = [];
+            if (event.ctrlKey) modifiers.push('Ctrl');
+            if (event.altKey) modifiers.push('Alt');
+            if (event.shiftKey && event.key.length !== 1) modifiers.push('Shift');
+            if (event.metaKey) modifiers.push('Meta');
+            const key = event.key.length === 1 ? event.key.toUpperCase() : event.key;
+            if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) return '';
+            modifiers.push(key);
+            return modifiers.join('+');
+        }
+
+        function handleKeyDown(event) {
+            if (pendingAssignment) {
+                if (event.key === 'Escape') {
+                    pendingAssignment = null;
+                    clearAssignmentHighlight();
+                    mappingStatus.textContent = 'Key assignment cancelled.';
+                    event.preventDefault();
+                    return;
+                }
+                const keyName = formatKey(event);
+                if (!keyName) return;
+                const { layout, button } = pendingAssignment;
+                const buttonIndex = layouts[layout].buttons.indexOf(button);
+                settings[layout][button] = keyName;
+                pendingAssignment = null;
+                saveSettings();
+                clearAssignmentHighlight();
+                const tile = gridElement.querySelector(`[data-button="${button}"]`);
+                if (tile) {
+                    tile.querySelector('.button-mapping').textContent = keyName;
+                    tile.classList.remove('assigning');
+                    tile.setAttribute('aria-label', `${tile.querySelector('.button-number').textContent}, mapped to ${keyName}. Click to assign another key.`);
+                }
+                const editorInput = mappingEditor.querySelectorAll('.mapping-input')[buttonIndex];
+                if (editorInput) editorInput.value = keyName;
+                mappingStatus.textContent = `Assigned ${keyName} to ${layout === '2' ? `Button ${buttonIndex + 4}` : `Button ${buttonIndex + 1}`}. Click another mapping field or grid button to assign it.`;
+                event.preventDefault();
+                return;
+            }
+
+            if (activeLesson || activeGame) {
+                if (event.repeat || event.key === 'Tab' || event.key === 'Escape') return;
+                const keyName = formatKey(event);
+                if (keyName) handleLessonKey(keyName, event);
+                return;
+            }
+
+            if (document.querySelector('main').classList.contains('lesson-mode')) return;
+            if (event.target !== testInput) return;
+            if (event.repeat || event.key === 'Tab' || event.key === 'Escape') return;
+            const keyName = formatKey(event);
+            if (!keyName) return;
+
+            if (event.key === 'Backspace') {
+                testInput.value = testInput.value.slice(0, -1);
+            } else {
+                testInput.value += `${testInput.value ? ' ' : ''}${keyName}`;
+            }
+
+            const detected = layouts[currentLayout].buttons.find(button => {
+                const mapping = settings[currentLayout][button];
+                return mapping && mapping.trim().toLocaleLowerCase() === keyName.toLocaleLowerCase();
+            });
+            gridElement.querySelectorAll('.mouse-btn').forEach(tile => {
+                tile.classList.toggle('active', tile.dataset.button === detected);
+            });
+
+            if (detected) {
+                const index = layouts[currentLayout].buttons.indexOf(detected);
+                const buttonName = currentLayout === '2' ? `Button ${index + 4} (${detected})` : `Button ${index + 1}`;
+                testStatus.textContent = `Detected ${keyName}, mapped to ${buttonName}.`;
+            } else {
+                testStatus.textContent = `Detected ${keyName}. No ${currentLayout}-button mapping matches it yet.`;
+            }
+            event.preventDefault();
+        }
+
+        document.querySelectorAll('.panel-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                if (activeLesson) return;
+                currentLayout = button.dataset.layout;
+                setMappingEditMode(false);
+                document.querySelectorAll('.panel-btn').forEach(option => {
+                    const selected = option === button;
+                    option.classList.toggle('active', selected);
+                    option.setAttribute('aria-pressed', String(selected));
+                });
+                renderGrid();
+                testInput.value = '';
+                testStatus.textContent = `Selected the ${currentLayout}-button plate. Click the test field to begin.`;
+                testInput.focus();
+            });
+        });
+
+        document.querySelectorAll('.lesson-button').forEach(button => {
+            button.addEventListener('click', () => {
+                if (activeLesson || activeGame) return;
+                selectedLesson = button.dataset.lesson;
+                updateLessonPicker();
+            });
+        });
+        lessonStartButton.addEventListener('click', startLesson);
+        document.getElementById('lesson-repeat').addEventListener('click', repeatLesson);
+        document.getElementById('lesson-next').addEventListener('click', nextLesson);
+        document.getElementById('lesson-exit').addEventListener('click', exitLesson);
+
+        document.addEventListener('keydown', handleKeyDown);
+        function setMappingEditMode(enabled) {
+            isEditingMappings = enabled;
+            pendingAssignment = null;
+            editMappingsButton.setAttribute('aria-pressed', String(enabled));
+            editMappingsButton.textContent = enabled ? 'Done editing' : 'Edit mappings';
+            clearAssignmentHighlight();
+            gridElement.querySelectorAll('.mouse-btn').forEach(tile => {
+                tile.disabled = !enabled;
+            });
+            mappingStatus.textContent = enabled
+                ? 'Editing is on. Click a grid button, then press its Synapse key.'
+                : 'Editing is off. Grid buttons will not change mappings.';
+        }
+
+        editMappingsButton.addEventListener('click', () => setMappingEditMode(!isEditingMappings));
+        settingsPanel.addEventListener('toggle', () => {
+            if (!settingsPanel.open) setMappingEditMode(false);
+        });
+        updateLessonPicker();
+        renderGrid();
+    </script>
+</body>
+</html>
